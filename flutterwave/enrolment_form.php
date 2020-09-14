@@ -11,11 +11,19 @@ $amount = $cost;
 // $tcost = $tcost;
 $publicKey = $this->get_config('pubKey');
 $displaymail = $this->get_config('email');
+
+$courseid = $instance->courseid;
+//$tryshow = $DB->get_record('enrol_flutterwave', array('courseid' => $courseid, 'id' => 11), $fields='amount', $strictness=IGNORE_MISSING);
+
+$sql = "SELECT id, amount 
+        FROM public.mdl_enrol_flutterwave ORDER BY id DESC ";
+$params = array('userid' => $USER->id, 'courseid' => $courseid);
+$recent_paid = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE)->amount;
+
 echo '<div class="mdl-align">'.get_string('paymentrequired').'';
 echo '<p><b>'.get_string('cost').": $instance->currency $cost".'</b></p>';
 echo "<b>Overall Cost for Course:  $instance->currency $tcost </b>";
 ?>
-
 
 
 
@@ -26,7 +34,7 @@ echo "<b>Overall Cost for Course:  $instance->currency $tcost </b>";
       <script src="https://api.ravepay.co/flwv3-pug/getpaidx/api/flwpbf-inline.js"></script>
       <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
       <button name = "name" type="button" onClick="payWithRave()">
-      <img src="<?php echo $CFG->wwwroot; ?>/enrol/flutterwave/pix/paynow.png" style="width: 100%; height: 'auto'; padding: 10px;">
+      <img src="<?php echo $CFG->wwwroot; ?>/enrol/flutterwave/pix/paynow.png" style="width: 80%; height: 'auto'; padding: 10px;">
       </button>
   </form>
 </div>
@@ -62,11 +70,12 @@ echo "<b>Overall Cost for Course:  $instance->currency $tcost </b>";
       $flw_ref = $data['flwRef'];
       $currency = $data['currency'];
       $tx_ref = $data['txRef'];
-      $old_paid_amount = $DB->get_record('enrol_flutterwave', array('courserid' => $courseid), $fields='amount', $strictness=IGNORE_MISSING)->amount;
+      // $old_paid_amount = $DB->get_record('enrol_flutterwave', array('courseid' => $courseid), $fields='amount', $strictness=IGNORE_MISSING)->amount;
+      // print_r($data);
 
       $enrolflutterwave = new stdClass();
-      $enrolflutterwave->amount = $old_paid_amount + $paid_amount;
-      $enrolflutterwave->tcost = $total_cost;
+      $enrolflutterwave->amount = $paid_amount + $recent_paid;
+      $enrolflutterwave->total_cost = $tcost;
       $enrolflutterwave->app_fee = $app_fee;
       $enrolflutterwave->payment_status = $payment_status;
       $enrolflutterwave->response_code = $response_code;
@@ -157,8 +166,8 @@ echo "<b>Overall Cost for Course:  $instance->currency $tcost </b>";
           document.getElementById('loaderView').style.display = 'block'
           
           if (
-              response.tx.chargeResponseCode == "00" ||
-              response.tx.chargeResponseCode == "0"
+              response.data.respcode == "00" ||
+              response.data.respcode == "0"
           ) {
               // redirect to a success page
                 document.getElementById('responseData').value = JSON.stringify(response.tx)
